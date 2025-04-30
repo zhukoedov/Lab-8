@@ -31,13 +31,32 @@ def find_circles(image):
     return circles
 
 
-def cv_video():
+def cv_video(need_for_fly):
     capture = cv.VideoCapture(0)
     ref_img = cv.imread('ref-point.jpg', cv.IMREAD_GRAYSCALE)
     # marker = cv.CascadeClassifier('')
     while True:
         ret, cam_img = capture.read()
         height, width = cam_img.shape[:2]
+
+        # addition task = fly
+        fly_img = cv.imread('fly64.png')
+        if need_for_fly:
+            rows, cols, channels = fly_img.shape
+            roi = cam_img[208:208+rows, 288:288+cols]
+            img2gray = cv.cvtColor(fly_img, cv.COLOR_BGR2GRAY)
+            ret, mask = cv.threshold(img2gray, 10, 255, cv.THRESH_BINARY)
+            mask_inv = cv.bitwise_not(mask)
+
+            # Now black-out the area of logo in ROI
+            img1_bg = cv.bitwise_and(roi, roi, mask=mask_inv)
+
+            # Take only region of logo from logo image.
+            img2_fg = cv.bitwise_and(fly_img, fly_img, mask=mask)
+
+            # Put logo in ROI and modify the main image
+            dst = cv.add(img1_bg, img2_fg)
+            cam_img[208:208+rows, 288:288+cols] = dst
 
         # Initiate ORB detector
         orb = cv.ORB_create()
@@ -84,6 +103,7 @@ def cv_video():
         cv.putText(cam_img, str(int(distance_to_show)),
                    (int(cx)-15, int(cy)-12), 1, 1, (0, 80, 255))
         cv.imshow("matches", img_matches)
+
         cv.imshow("Video", cam_img)
 
         k = cv.waitKey(30) & 0xFF
@@ -95,5 +115,5 @@ def cv_video():
 
 
 if __name__ == "__main__":
-    cv_photo()
-    cv_video()
+    # cv_photo()
+    cv_video(False)  # True for fly appearance
